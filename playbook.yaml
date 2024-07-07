@@ -1,0 +1,112 @@
+- name: OvenMediaEngine installer
+  hosts: myhosts
+  tasks:
+    - name: Clean old docker versions
+      ansible.builtin.apt:
+        state: absent
+        name:
+          - docker.io
+          - docker-compose
+          - docker-compose-v2
+          - docker-doc
+          - podman-docker
+          - containerd
+          - runc
+    # mkdir and set permissions
+    - name: Create keyrings directory
+      ansible.builtin.file:
+        dest: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+    - name: Add docker's key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+    - name: Add docker's repository
+      ansible.builtin.apt_repository:
+        repo: deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename | lower }} stable
+        state: present
+        filename: docker
+    - name: Install docker
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+    - name: Create OvenMediaEngine directory
+      ansible.builtin.file:
+        path: /etc/OvenMediaEngine
+        state: directory
+        mode: '0755'
+    - name: Create ovenmediaengine configuration
+      vars:
+        api:
+          enabled: true
+          hostnames:
+          - '*'
+          access_token: 'hello world'
+        tls:
+          enabled: false
+          cert_path: /etc/OvenMediaEngine/cert.pem
+          key_path: /etc/OvenMediaEngine/key.pem
+          chain_cert_path: /etc/OvenMediaEngine/chain.pem
+        cors:
+        - '*'
+        vhosts:
+          - name: default
+            hostnames:
+            - '*'
+            signed_policy:
+              enabled: false
+            admission_webhooks:
+              enabled: false
+            tls:
+              enabled: false
+              cert_path: /etc/OvenMediaEngine/cert.pem
+              key_path: /etc/OvenMediaEngine/key.pem
+              chain_cert_path: /etc/OvenMediaEngine/chain.pem
+            cors:
+            - '*'
+            apps:
+            - type: live
+              name: live
+              profiles:
+              - name: default
+                encodes:
+                  video:
+                  - name: bypass_video
+                    bypass: true
+                  audio:
+                  - name: bypass_audio
+                    bypass: true
+              providers:
+                ovt: {}
+                webrtc: {}
+                rtmp: {}
+                rtsp: {}
+              publishers:
+                llhls:
+                  enabled: true
+
+      ansible.builtin.template:
+        src: Origin.xml
+        dest: /etc/OvenMediaEngine/Origin.xml
+    - name: Fire up OvenMediaEngine
+      community.docker.docker_container:
+        image: airensoft/ovenmediaengine:0.16.5
+        name: ovenmediaengine
+        env:
+          OME_HOST_IP: "{{ ansible_default_ipv4.address }}"
+        mounts:
+          - source: /etc/OvenMediaEngine/Origin.xml
+            target: /opt/ovenmediaengine/bin/origin_conf/Server.xml
+            type: bind
+        published_ports:
+          - 1935:1935
+          - 9999:9999/udp
+          - 3333:3333
+          - 3478:3478
+          - 10000-10009:10000-10009/udp

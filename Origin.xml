@@ -1,0 +1,611 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Server version="8">
+	<Name>OvenMediaEngine</Name>
+	<!-- Host type (origin/edge) -->
+	<Type>origin</Type>
+	<!-- Specify IP address to bind ("*" means all IPv4 IPs, "::" means all IPv6 IPs) -->
+	<!-- Uncomment the line below to enable IPv6 -->
+	<!-- <IP>::</IP> -->
+	<IP>*</IP>
+	<PrivacyProtection>false</PrivacyProtection>
+
+	<!-- 
+	To get the public IP address(mapped address of stun) of the local server. 
+	This is useful when OME cannot obtain a public IP from an interface, such as AWS or docker environment. 
+	If this is successful, you can use ${PublicIP} in your settings.
+	-->
+	<StunServer>stun.ovenmediaengine.com:13478</StunServer>
+
+	<Modules>
+		<!-- 
+		Currently OME only supports h2 like all browsers do. Therefore, HTTP/2 only works on TLS ports.			
+		-->
+		<HTTP2>
+			<Enable>true</Enable>
+		</HTTP2>
+
+		<LLHLS>
+			<Enable>true</Enable>
+		</LLHLS>
+
+		<!-- P2P works only in WebRTC and is experiment feature -->
+		<P2P>
+			<!-- disabled by default -->
+			<Enable>false</Enable>
+			<MaxClientPeersPerHostPeer>2</MaxClientPeersPerHostPeer>
+		</P2P>
+	</Modules>
+
+	<!-- Settings for the ports to bind -->
+	<Bind>
+		<!-- Enable this configuration if you want to use API Server -->
+		<!--
+		<Managers>
+			<API>
+				<Port>8081</Port>
+				<TLSPort>8082</TLSPort>
+				<WorkerCount>1</WorkerCount>
+			</API>
+		</Managers>
+		-->
+
+		<Providers>
+			<!-- Pull providers -->
+			<RTSPC>
+				<WorkerCount>1</WorkerCount>
+			</RTSPC>
+			<OVT>
+				<WorkerCount>1</WorkerCount>
+			</OVT>
+			<!-- Push providers -->
+			<RTMP>
+				<Port>1935</Port>
+				<WorkerCount>1</WorkerCount>
+			</RTMP>
+			<SRT>
+				<Port>9999</Port>
+				<WorkerCount>1</WorkerCount>
+			</SRT>
+			<MPEGTS>
+				<!--
+					Below is an example of listening on port 4000-4005 (<Port>4000-4004,4005/udp</Port>)
+					This is just a demonstration to show that you can configure the port in several ways
+				
+					<Port>4000-4004,4005/udp</Port>
+				-->
+				<Port>4000/udp</Port>
+			</MPEGTS>
+			<WebRTC>
+				<Signalling>
+					<Port>3333</Port>
+					<TLSPort>3334</TLSPort>
+					<WorkerCount>1</WorkerCount>
+				</Signalling>
+
+				<IceCandidates>
+					<!-- Uncomment the line below to use IPv6 ICE Candidate -->
+					<!-- <IceCandidate>[::]:10000-10004/udp</IceCandidate> -->
+					<IceCandidate>*:10000-10004/udp</IceCandidate>
+
+					<!-- Uncomment the line below to use a link local address when specifying an address with IPv6 wildcard (::) -->
+					<!-- <EnableLinkLocalAddress>true</EnableLinkLocalAddress> -->
+
+					<!-- 
+						If you want to stream WebRTC over TCP, specify IP:Port for TURN server.
+						This uses the TURN protocol, which delivers the stream from the built-in TURN server to the player's TURN client over TCP. 
+					-->
+					<TcpRelay>*:3478</TcpRelay>
+					<!-- TcpForce is an option to force the use of TCP rather than UDP in WebRTC streaming. (You can omit ?transport=tcp accordingly.) If <TcpRelay> is not set, playback may fail. -->
+					<TcpForce>true</TcpForce>
+					<TcpRelayWorkerCount>1</TcpRelayWorkerCount>
+				</IceCandidates>
+			</WebRTC>
+		</Providers>
+
+		<Publishers>
+			<OVT>
+				<Port>9000</Port>
+				<WorkerCount>1</WorkerCount>
+			</OVT>
+			<LLHLS>
+				<!-- 
+				OME only supports h2, so LLHLS works over HTTP/1.1 on non-TLS ports. 
+				LLHLS works with higher performance over HTTP/2, 
+				so it is recommended to use a TLS port.
+				-->
+				<Port>3333</Port>
+				<!-- If you want to use TLS, specify the TLS port -->
+				<TLSPort>3334</TLSPort>
+				<WorkerCount>1</WorkerCount>
+			</LLHLS>
+			<WebRTC>
+				<Signalling>
+					<Port>3333</Port>
+					<TLSPort>3334</TLSPort>
+					<WorkerCount>1</WorkerCount>
+				</Signalling>
+				<IceCandidates>
+					<!-- Uncomment the line below to use IPv6 ICE Candidate -->
+					<!-- <IceCandidate>[::]:10000-10004/udp</IceCandidate> -->
+					<IceCandidate>*:10000-10004/udp</IceCandidate>
+					
+					<!-- Uncomment the line below to use a link local address when specifying an address with IPv6 wildcard (::) -->
+					<!-- <EnableLinkLocalAddress>true</EnableLinkLocalAddress> -->
+
+					<!-- 
+						If you want to stream WebRTC over TCP, specify IP:Port for TURN server.
+						This uses the TURN protocol, which delivers the stream from the built-in TURN server to the player's TURN client over TCP. 
+					-->
+					<TcpRelay>*:3478</TcpRelay>
+					<!-- TcpForce is an option to force the use of TCP rather than UDP in WebRTC streaming. (You can omit ?transport=tcp accordingly.) If <TcpRelay> is not set, playback may fail. -->
+					<TcpForce>true</TcpForce>
+					<TcpRelayWorkerCount>1</TcpRelayWorkerCount>
+				</IceCandidates>
+			</WebRTC>
+		</Publishers>
+	</Bind>
+
+	<!--
+		Enable this configuration if you want to use API Server
+		
+		<AccessToken> is a token for authentication, and when you invoke the API, you must put "Basic base64encode(<AccessToken>)" in the "Authorization" header of HTTP request.
+		For example, if you set <AccessToken> to "ome-access-token", you must set "Basic b21lLWFjY2Vzcy10b2tlbg==" in the "Authorization" header.
+	-->
+	{% if api.enabled %}
+	<Managers>
+		<Host>
+			<Names>
+				{% for name in api.hostnames %}
+					<Name>{{ name }}</Name>
+				{% endfor %}
+			</Names>
+			{% if tls.enabled %}
+				<TLS>
+					<CertPath>{{ tls.cert_path }}</CertPath>
+					<KeyPath>{{ tls.key_path }}</KeyPath>
+					<ChainCertPath>{{ tls.chain_cert_path }}</ChainCertPath>
+				</TLS>
+			{% endif %}
+		</Host>
+		<API>
+			<AccessToken>{{ api.access_token }}</AccessToken>
+			<CrossDomains>
+				{% for domain in cors %}
+					<Url>{{ domain }}</Url>
+				{% endfor %}
+			</CrossDomains>
+		</API>
+	</Managers>
+	{% endif %}
+
+	<!--
+		Refer https://airensoft.gitbook.io/ovenmediaengine/alert
+	<Alert>
+		<Url></Url>
+		<SecretKey></SecretKey>
+		<Timeout>3000</Timeout>
+		<Rules>
+			<Ingress>
+				<MinBitrate></MinBitrate>
+				<MaxBitrate></MaxBitrate>
+				<MinFramerate></MinFramerate>
+				<MaxFramerate></MaxFramerate>
+				<MinWidth></MinWidth>
+				<MinHeight></MinHeight>
+				<MaxWidth></MaxWidth>
+				<MaxHeight></MaxHeight>
+				<MinSamplerate></MinSamplerate>
+				<MaxSamplerate></MaxSamplerate>
+				<LongKeyFrameInterval />
+				<HasBFrames />
+			</Ingress>
+		</Rules>
+	</Alert>
+	-->
+
+	<VirtualHosts>
+		<!-- You can use wildcard like this to include multiple XMLs -->
+		<VirtualHost include="VHost*.xml" />
+		{% for vhost in vhosts %}
+		<VirtualHost>
+			<Name>{{ vhost.name }}</Name>
+			<!--Distribution is a value that can be used when grouping the same vhost distributed across multiple servers. This value is output to the events log, so you can use it to aggregate statistics. -->
+			<Distribution>{{ vhost.distribution | default('ovenmediaengine.com') }}</Distribution>
+
+			<!-- Settings for multi ip/domain and TLS -->
+			<Host>
+				<Names>
+					{% for name in vhost.hostnames %}
+						<Name>{{ name }}</Name>
+					{% endfor %}
+				</Names>
+				{% if vhost.tls.enabled %}
+				<TLS>
+					<CertPath>{{ vhost.tls.cert_path }}</CertPath>
+					<KeyPath>{{ vhost.tls.key_path }}</KeyPath>
+					<ChainCertPath>{{ vhost.tls.chain_cert_path }}</ChainCertPath>
+				</TLS>
+				{% endif %}
+			</Host>
+
+			{% if vhost.signed_policy.enabled %}
+			<SignedPolicy>
+				<PolicyQueryKeyName>{{ vhost.signed_policy.policy }}</PolicyQueryKeyName>
+				<SignatureQueryKeyName>{{ vhost.signed_policy.signature }}</SignatureQueryKeyName>
+				<SecretKey>{{ vhost.signed_policy.secret_key }}</SecretKey>
+
+				<Enables>
+					<Providers>{{ vhost.signed_policy.providers | join(',') }}</Providers>
+					<Publishers>{{ vhost.signed_policy.publishers | join(',') }}</Publishers>
+				</Enables>
+			</SignedPolicy>
+		{% endif %}
+
+		{% if vhost.admission_webhooks.enabled %}
+			<AdmissionWebhooks>
+				<ControlServerUrl>{{ vhost.admission_webhooks.url }}</ControlServerUrl>
+				<SecretKey>{{ vhost.admission_webhooks.secret_key }}</SecretKey>
+				<Timeout>{{ vhost.admission_webhooks.timeout }}</Timeout>
+				<Enables>
+					<Providers>{{ vhost.admission_webhooks.providers | join(',') }}</Providers>
+					<Publishers>{{ vhost.admission_webhooks.publishers | join(',') }}</Publishers>
+				</Enables>
+			</AdmissionWebhooks>
+		{% endif %}
+
+			<!-- <Origins>
+				<Properties>
+					<NoInputFailoverTimeout>3000</NoInputFailoverTimeout>
+					<UnusedStreamDeletionTimeout>60000</UnusedStreamDeletionTimeout>
+				</Properties>
+				<Origin>
+					<Location>/app/stream</Location>
+					<Pass>
+						<Scheme>ovt</Scheme>
+						<Urls><Url>origin.com:9000/app/stream_720p</Url></Urls>
+					</Pass>
+					<ForwardQueryParams>false</ForwardQueryParams>
+				</Origin>
+				<Origin>
+					<Location>/app/</Location>
+					<Pass>
+						<Scheme>ovt</Scheme>
+						<Urls><Url>origin.com:9000/app/</Url></Urls>
+					</Pass>
+				</Origin>
+				<Origin>
+					<Location>/edge/</Location>
+					<Pass>
+						<Scheme>ovt</Scheme>
+						<Urls><Url>origin.com:9000/app/</Url></Urls>
+					</Pass>
+				</Origin>
+			</Origins> -->
+
+			<!--
+			<OriginMapStore>
+				In order to use OriginMap, you must enable OVT Publisher in Origin and OVT Provider in Edge.
+				<RedisServer>
+					<Host>192.168.0.160:6379</Host>
+					<Auth>!@#ovenmediaengine</Auth>
+				</RedisServer>
+				
+				This is only needed for the origin server and used to register the ovt address of the stream. 
+				<OriginHostName>ome-dev.airensoft.com</OriginHostName>
+			</OriginMapStore>
+			-->
+
+			<!-- Default CORS Settings -->
+			<CrossDomains>
+				{% for domain in vhost.cors %}
+					<Url>{{ domain }}</Url>
+				{% endfor %}
+			</CrossDomains>
+
+			<!-- Settings for applications -->
+			<Applications>
+				<Application>
+					{% for app in vhost.apps %}
+					<Name>{{ app.name }}</Name>
+					<!-- Application type (live/vod) -->
+					<Type>{{ app.type | default('live') }}</Type>
+					<OutputProfiles>
+						<!-- Enable this configuration if you want to hardware acceleration using GPU -->
+						<HWAccels>
+							<Decoder>
+									<Enable>{{ app.hwaccel.decoder.enabled | default('false') }}</Enable>
+									<!-- 
+										Setting for Hardware Modules.
+										 - xma :Xilinx Media Accelerator
+										 - qsv :Intel Quick Sync Video
+										 - nv : Nvidia Video Codec SDK
+										 - nilogan: Netint VPU
+
+										You can use multiple modules by separating them with commas.
+										For example, if you want to use xma and nv, you can set it as follows.
+
+										<Modules>[ModuleName]:[DeviceId],[ModuleName]:[DeviceId],...</Modules>
+										<Modules>xma:0,nv:0</Modules>
+									-->
+									<!-- <Modules>nv</Modules> -->
+							</Decoder>
+							<Encoder>
+									<Enable>{{ app.hwaccel.encoder.enabled | default('false') }}</Enable>
+									<!-- <Modules>nv</Modules> -->
+							</Encoder>
+						</HWAccels>
+
+						{% for profile in app.profiles %}
+						<OutputProfile>
+							<Name>{{ profile.name | default('bypass_stream') }}</Name>
+							<OutputStreamName>{{ profile.output_stream_name | default('${OriginStreamName}') }}</OutputStreamName>
+
+							<!-- 
+							You can provide ABR with Playlist. Currently, ABR is supported in LLHLS and WebRTC.
+							
+							<Playlist>
+								<Name>Paid</Name>
+								You can play this playlist with 
+								LLHLS : http[s]://<domain>[:port]/<app>/<stream>/<FileName>.m3u8 
+								WebRTC : ws[s]://<domain>[:port]/<app>/<stream>/<FileName>
+								Note that the keywords "playlist" and "chunklist" MUST NOT be included in FileName.
+								<FileName>premium</FileName>
+
+								Options is optional. 
+								<Options>
+									WebRtcAutoAbr : Default value is true
+									<WebRtcAutoAbr>true</WebRtcAutoAbr> 
+								</Options>
+								
+								<Rendition>
+									<Name>bypass</Name>
+									<Video>bypass_video</Video>
+									<Audio>bypass_audio</Audio>
+								</Rendition>
+								<Rendition>
+									<Name>480p</Name>
+									<Video>480p</Video>
+									<Audio>bypass_audio</Audio>
+								</Rendition>
+								<Rendition>
+									<Name>720p</Name>
+									<Video>720p</Video>
+									<Audio>bypass_audio</Audio>
+								</Rendition>
+							</Playlist>
+							<Playlist>
+								<Name>free</Name>
+								<FileName>free</FileName>
+								<Rendition>
+									<Name>720p</Name>
+									<Video>720p</Video>
+									<Audio>bypass_audio</Audio>
+								</Rendition>
+							</Playlist>
+							-->
+
+							<Encodes>
+								{% for encode in profile.encodes.video %}
+								<Video>
+									<Name>{{ encode.name }}</Name>
+									{% if encode.codec is defined %}
+										<Codec>{{ encode.codec }}</Codec>
+									{% endif %}
+
+									{% if encode.bitrate is defined %}
+										<Bitrate>{{ encode.bitrate }}</Bitrate>
+									{% endif %}
+
+									{% if encode.width is defined %}
+										<Width>{{ encode.width }}</Width>
+									{% endif %}
+
+									{% if encode.height is defined %}
+										<Height>{{ encode.height }}</Height>
+									{% endif %}
+
+									{% if encode.framerate is defined %}
+										<Framerate>{{ encode.framerate }}</Framerate>
+									{% endif %}
+
+									{% if encode.keyframe_interval is defined %}
+										<KeyFrameInterval>{{ encode.keyframe_interval }}</KeyFrameInterval>
+									{% endif %}
+
+									{% if encode.bframes is defined %}
+										<BFrames>{{ encode.bframes }}</BFrames>
+									{% endif %}
+
+									{% if encode.preset is defined %}
+										<Preset>{{ encode.preset }}</Preset>
+									{% endif %}
+
+									{% if encode.bypass is defined %}
+										<Bypass>{{ encode.bypass }}</Bypass>
+									{% endif %}
+								</Video>
+								{% endfor %}
+
+								<Audio>
+									<Name>aac_audio</Name>
+									<Codec>aac</Codec>
+									<Bitrate>128000</Bitrate>
+									<Samplerate>48000</Samplerate>
+									<Channel>2</Channel>
+									<BypassIfMatch>
+										<Codec>eq</Codec>
+									</BypassIfMatch>
+								</Audio>
+								<Audio>
+									<Name>opus_audio</Name>
+									<Codec>opus</Codec>
+									<Bitrate>128000</Bitrate>
+									<Samplerate>48000</Samplerate>
+									<Channel>2</Channel>
+									<BypassIfMatch>
+										<Codec>eq</Codec>
+									</BypassIfMatch>
+								</Audio>
+								<!--
+								{% for encode in profile.encodes.audio %}
+								<Audio>
+
+									<Name>{{ encode.name }}</Name>
+									{% if encode.codec is defined %}
+										<Codec>{{ encode.codec }}</Codec>
+									{% endif %}
+
+									{% if encode.bitrate is defined %}
+										<Bitrate>{{ encode.bitrate }}</Bitrate>
+									{% endif %}
+
+									{% if encode.samplerate is defined %}
+										<Samplerate>{{ encode.samplerate }}</Samplerate>
+									{% endif %}
+
+									{% if encode.channel is defined %}
+										<Channel>{{ encode.channel }}</Channel>
+									{% endif %}
+
+									{% if encode.bypass is defined %}
+										<Bypass>{{ encode.bypass }}</Bypass>
+									{% endif %}
+									<BypassIfMatch>
+										<Codec>eq</Codec>
+									</BypassIfMatch>
+								</Audio>
+								{% endfor %}
+							-->
+							</Encodes>
+						</OutputProfile>
+						{% endfor %}
+					</OutputProfiles>
+					<Providers>
+						{% if app.providers.ovt is defined %}
+							<OVT />
+						{% endif %}
+						{% if app.providers.webrtc is defined %}
+							<WebRTC />
+						{% endif %}
+
+						{% if app.providers.rtmp is defined %}
+							<RTMP />
+						{% endif %}
+						{% if app.providers.srt is defined %}
+							<SRT />
+						{% endif %}
+						{% if app.providers.mpegts  is defined %}
+							<MPEGTS>
+								<StreamMap>
+									<!--
+										Set the stream name of the client connected to the port to "stream_${Port}"
+										For example, if a client connects to port 4000, OME creates a "stream_4000" stream
+										<Stream>
+											<Name>stream_${Port}</Name>
+											<Port>4000,4001-4004</Port>
+										</Stream>
+										<Stream>
+											<Name>stream_4005</Name>
+											<Port>4005</Port>
+										</Stream>
+									-->
+									<Stream>
+										<Name>stream_${Port}</Name>
+										<Port>4000</Port>
+									</Stream>
+								</StreamMap>
+							</MPEGTS>
+						{% endif %}
+						{% if app.providers.rtsp is defined %}
+							<RTSPPull />
+						{% endif %}
+
+						{% if app.providers.webrtc is defined %}
+							<WebRTC>
+								<Timeout>30000</Timeout>
+								<CrossDomains>
+									<Url>*</Url>
+								</CrossDomains>
+							</WebRTC>
+						{% endif %}
+						<!-- 
+						Skipping scheduled streams for now
+								<Schedule>
+									<MediaRootDir>/opt/ovenmediaengine/media</MediaRootDir>
+									<ScheduleFilesDir>/opt/ovenmediaengine/media</ScheduleFilesDir>
+								</Schedule>
+						-->
+					</Providers>
+					<Publishers>
+						<AppWorkerCount>{{ app.publishers.appworkers | default('1') }}</AppWorkerCount>
+						<StreamWorkerCount>{{ app.publishers.streamworkers | default('8') }}</StreamWorkerCount>
+						{% if app.publishers.ovt is defined %}
+							<OVT />
+						{% endif %}
+						{% if app.publishers.webrtc is defined %}
+							<WebRTC>
+								<Timeout>{{ app.publishers.webrtc.timeout | default('30000') }}</Timeout>
+								<Rtx>{{ app.publishers.webrtc.rtx | default('false') }}</Rtx>
+								<Ulpfec>{{ app.publishers.webrtc.ulpfec | default('false') }}</Ulpfec>
+								<JitterBuffer>{{ app.publishers.webrtc.jitterbuffer | default('false') }}</JitterBuffer>
+							</WebRTC>						
+						{% endif %}
+					
+						{% if app.publishers.llhls is defined %}
+						<LLHLS>
+							<ChunkDuration>{{ app.publishers.llhls.chunkduration | default('0.5') }}</ChunkDuration>
+							<!-- <PartHoldBack> SHOULD be at least three times the <ChunkDuration> -->
+							<PartHoldBack>{{ app.publishers.llhls.parthb | default('1.5') }}</PartHoldBack>
+							<SegmentDuration>{{ app.publishers.llhls.segmentduration | default('6') }}</SegmentDuration>
+							<SegmentCount>{{ app.publishers.llhls.segmentcount | default('10') }}</SegmentCount>
+							{% if app.publishers.llhls.dvr is defined %}
+							<DVR>
+								<Enable>true</Enable>
+								<TempStoragePath>{{ app.publishers.llhls.dvr.path | default('/tmp/ome_dvr') }}</TempStoragePath>
+								<MaxDuration>{{ app.publishers.llhls.dvr.duration | default('3600') }}</MaxDuration>
+							</DVR>
+							{% endif %}
+
+							{% if app.publishers.llhls.drm is defined %}
+								<DRM>
+									<Enable>false</Enable>
+									<InfoFile>path/to/file.xml</InfoFile>
+								</DRM>
+							{% endif %}
+
+							<CrossDomains>
+								{% for domain in cors %}
+									<Url>{domain}</Url>
+								{% endfor %}
+							</CrossDomains>
+						</LLHLS>
+						{% endif %}
+						<!--
+						<Push>
+							<StreamMap>
+								<Enable>false</Enable>
+								<Path>path/to/file.xml</Path>
+							</StreamMap>
+						</Push>
+						<FILE>
+							<RootPath>/prefix/path/to</RootPath>
+							<StreamMap>
+								<Enable>false</Enable>
+								<Path>path/to/file.xml</Path>
+							</StreamMap>
+						</FILE>
+						<Thumbnail>
+							<CrossDomains>
+								<Url>*</Url>
+							</CrossDomains>
+						</Thumbnail>						
+						-->
+					</Publishers>
+					{% endfor %}
+				</Application>
+			</Applications>
+		</VirtualHost>
+		{% endfor %}
+	</VirtualHosts>
+</Server>
